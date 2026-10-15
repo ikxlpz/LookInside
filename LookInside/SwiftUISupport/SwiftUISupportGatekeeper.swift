@@ -186,7 +186,10 @@ public final class SwiftUISupportGatekeeper: NSObject {
     // MARK: - State
 
     public var activationState: SwiftUISupportActivationState {
-        stateLock.withLock { publishedState }
+        if ActivationPersonalUse.unrestrictedLocalAccess {
+            return .activated
+        }
+        return stateLock.withLock { publishedState }
     }
 
     /// Re-evaluates the stored license state off the main thread. Posts the
@@ -244,6 +247,9 @@ public final class SwiftUISupportGatekeeper: NSObject {
     /// warning or a block is a sheet on `window` and never a modal loop.
     @objc(allowProtectedFeatureAccessForWindow:)
     public func allowProtectedFeatureAccess(for window: NSWindow?) -> Bool {
+        if ActivationPersonalUse.unrestrictedLocalAccess {
+            return true
+        }
         let decision = accessDecisionForSynchronousCaller()
         switch decision.decision {
         case .allow:
@@ -264,6 +270,9 @@ public final class SwiftUISupportGatekeeper: NSObject {
 
     @objc(canUseProtectedFeatureWithoutPrompt)
     public func canUseProtectedFeatureWithoutPrompt() -> Bool {
+        if ActivationPersonalUse.unrestrictedLocalAccess {
+            return true
+        }
         accessDecisionForSynchronousCaller().grantsAccess
     }
 
@@ -466,6 +475,7 @@ public final class SwiftUISupportGatekeeper: NSObject {
 
     @objc(noteDetectedSwiftUISupport)
     public func noteDetectedSwiftUISupport() {
+        guard !ActivationPersonalUse.unrestrictedLocalAccess else { return }
         guard activationState != .activated else { return }
 
         activationPromptLock.withLock {
@@ -476,6 +486,7 @@ public final class SwiftUISupportGatekeeper: NSObject {
 
     @objc(promptForPendingDetectedSwiftUISupportIfNeededForWindow:)
     public func promptForPendingDetectedSwiftUISupportIfNeeded(window: NSWindow?) {
+        guard !ActivationPersonalUse.unrestrictedLocalAccess else { return }
         guard activationState != .activated else { return }
 
         if isInspectorWindow(window) {
